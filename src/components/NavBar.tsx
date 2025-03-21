@@ -55,7 +55,7 @@ export default function Navbar({ user, notificationCount = 0 }: NavbarProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-            <nav className="flex flex-col gap-4 mt-8">
+            <nav className="flex flex-col gap-4 mt-8 ml-5">
               <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
                 <Home className="h-5 w-5" />
                 Home

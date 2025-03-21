@@ -161,9 +161,8 @@ export default function PostCard({
           <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">{author.name}</span>
-            <span className="text-sm text-muted-foreground">@{author.username}</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold">{author.username}</span>
             <span className="text-sm text-muted-foreground">·</span>
             <span className="text-sm text-muted-foreground">{formattedDate}</span>
           </div>
