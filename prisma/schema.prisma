@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PostType {
+  fact
+  question
+  lesson
+}
+
+enum VoteType {
+  upvote
+  downvote
+}
+
+enum ReportStatus {
+  pending
+  reviewed
+  resolved
+  rejected
+}
+
+enum NotificationType {
+  upvote
+  downvote
+  mention
+  system
+}
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  email           String         @unique
+  phoneNumber     String?        @unique @map("phone_number")
+  passwordHash    String?        @map("password_hash")
+  name            String
+  username        String         @unique
+  bio             String?
+  profileImageUrl String?        @map("profile_image_url")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @default(now()) @map("updated_at") @db.Timestamptz
+  isVerified      Boolean        @default(false) @map("is_verified")
+  authProvider    String?        @map("auth_provider")
+  sessions        Session[]
+  posts           Post[]
+  votes           Vote[]
+  reports         Report[]
+  notifications   Notification[]
+  interests       UserInterest[]
+  followers   Follow[] @relation("UserFollowers")
+  following   Follow[] @relation("UserFollowing")
+
+  @@map("users")
+}
+
+model Follow {
+  id          String   @id @default(uuid()) @db.Uuid
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  // Define relations (assuming User model exists)
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+
+model Post {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  content      String
+  postType     PostType  @map("post_type")
+  externalLink String?   @map("external_link")
+  imageUrl     String?   @map("image_url")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags         PostTag[]
+  votes        Vote[]
+  reports      Report[]
+
+  @@index([userId])
+  @@index([postType])
+  @@map("posts")
+}
+
+model Tag {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @unique
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  posts     PostTag[]
+  interests UserInterest[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId String @map("post_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([postId])
+  @@index([tagId])
+  @@map("post_tags")
+}
+
+model Vote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  voteType  VoteType @map("vote_type")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
+  @@map("votes")
+}
+
+model Report {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  postId    String       @map("post_id") @db.Uuid
+  reason    String
+  status    ReportStatus @default(pending)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  user      User         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  content   String
+  type      NotificationType
+  isRead    Boolean          @default(false) @map("is_read")
+  relatedId String?          @map("related_id") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model UserInterest {
+  userId String @map("user_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tagId])
+  @@index([userId])
+  @@index([tagId])
+  @@map("user_interests")
+}
+
+model AuthAttempt {
+  id         String   @id @default(cuid())
+  identifier String   // Email or username
+  ipAddress  String
+  userAgent  String?
+  success    Boolean  @default(false)
+  eventType  String   // login, signup, password_reset, etc.
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, success, createdAt])
+  @@index([ipAddress, success, createdAt])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid  
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@map("sessions")
+}
